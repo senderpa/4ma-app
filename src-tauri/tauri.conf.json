@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicorevin/tauri-settings-schema/master/schemas/tauri.conf.json",
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v2.0.0/crates/tauri-cli/schema.json",
   "productName": "4MA",
   "version": "1.0.0",
   "identifier": "com.senderpa.fourma",
@@ -10,9 +10,9 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "title": "4MA",
     "windows": [
       {
+        "label": "main",
         "title": "4MA",
         "width": 1100,
         "height": 750,
@@ -25,11 +25,7 @@
       }
     ],
     "security": {
-      "csp": null
-    },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src http://localhost:5090 https://localhost:5090; connect-src http://localhost:5090 https://localhost:5090 ipc: http://ipc.localhost"
     }
   },
   "bundle": {
@@ -50,6 +46,14 @@
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": ""
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
     },
     "license": "MIT"
   }

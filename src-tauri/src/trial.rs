@@ -39,7 +39,7 @@ pub fn check() -> TrialStatus {
     // Licensed?
     if license_file().exists() {
         if let Ok(key) = fs::read_to_string(license_file()) {
-            if validate_key(&key.trim()) {
+            if validate_key(key.trim()) {
                 return TrialStatus {
                     active: true,
                     expired: false,
@@ -98,7 +98,14 @@ pub fn activate(key: &str) -> Result<String, String> {
 }
 
 fn validate_key(key: &str) -> bool {
-    // Simple validation: key must be 4MA-XXXX-XXXX-XXXX format
-    // In production, verify against a server or use cryptographic validation
-    key.starts_with("4MA-") && key.len() >= 16
+    // Validation: key must match 4MA-XXXX-XXXX-XXXX format (19 chars total).
+    // Each segment after the prefix is 4 alphanumeric characters.
+    // In production, verify against a server or use cryptographic validation.
+    if !key.starts_with("4MA-") || key.len() != 19 {
+        return false;
+    }
+    let parts: Vec<&str> = key.split('-').collect();
+    parts.len() == 4
+        && parts[0] == "4MA"
+        && parts.iter().skip(1).all(|p| p.len() == 4 && p.chars().all(|c| c.is_ascii_alphanumeric()))
 }
