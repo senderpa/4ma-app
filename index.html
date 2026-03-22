@@ -20,6 +20,9 @@
     #expired .buy-btn:hover{background:#00ddff}
     #expired input{background:#0a1018;border:1px solid #1a2a3a;color:#a0ccee;padding:10px;border-radius:8px;font:13px 'Courier New',monospace;width:280px;text-align:center}
     #expired .or{color:#334455;font-size:10px}
+    #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#06080e;z-index:10}
+    #loading span{color:#00ffcc;font-size:16px;letter-spacing:4px;animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
   </style>
 </head>
 <body>
@@ -30,18 +33,46 @@
   <div id="expired">
     <h1>4MA</h1>
     <p>your trial has ended. buy 4MA to keep using it — one payment, yours forever.</p>
-    <button class="buy-btn" onclick="window.__TAURI__.shell.open('https://senderpa.github.io/4ma/support')">BUY 4MA</button>
+    <button class="buy-btn" id="buy-btn">BUY 4MA</button>
     <span class="or">— or enter your license key —</span>
     <input id="license-input" placeholder="4MA-XXXX-XXXX-XXXX" />
-    <button class="buy-btn" style="background:#1a3050;color:#88aacc;font-size:12px;padding:10px 30px" onclick="activateLicense()">ACTIVATE</button>
+    <button class="buy-btn" id="activate-btn" style="background:#1a3050;color:#88aacc;font-size:12px;padding:10px 30px">ACTIVATE</button>
   </div>
+
+  <div id="loading"><span>4MA</span></div>
 
   <div id="app">
     <iframe id="main-frame" src="about:blank"></iframe>
   </div>
 
   <script type="module">
-    const { invoke } = window.__TAURI__?.core || {};
+    // Tauri 2 uses window.__TAURI__ which is injected at runtime.
+    // In dev mode without Tauri (plain browser), these will be undefined.
+    const invoke = window.__TAURI__?.core?.invoke;
+
+    // Open external URLs via the shell plugin
+    async function openExternal(url) {
+      try {
+        if (window.__TAURI__?.shell?.open) {
+          await window.__TAURI__.shell.open(url);
+        } else {
+          window.open(url, '_blank');
+        }
+      } catch (_) {
+        window.open(url, '_blank');
+      }
+    }
+
+    // Wire up buttons (no inline onclick — CSP-safe)
+    document.getElementById('buy-btn').addEventListener('click', () => {
+      openExternal('https://senderpa.github.io/4ma/support');
+    });
+    document.getElementById('buy-link').addEventListener('click', () => {
+      openExternal('https://senderpa.github.io/4ma/support');
+    });
+    document.getElementById('activate-btn').addEventListener('click', () => {
+      activateLicense();
+    });
 
     async function checkTrial() {
       if (!invoke) return; // dev mode without Tauri
@@ -63,20 +94,39 @@
       } catch (_) {}
     }
 
-    window.activateLicense = async function() {
+    async function activateLicense() {
       const key = document.getElementById('license-input').value.trim();
-      if (!key) return;
+      if (!key || !invoke) return;
       try {
         await invoke('activate_license', { key });
         location.reload();
       } catch (e) {
         alert('Invalid key: ' + e);
       }
-    };
+    }
 
-    // Load the 4MA backend UI
+    // Load the 4MA backend UI inside the iframe
+    const BACKEND_URL = 'http://localhost:5090';
     const frame = document.getElementById('main-frame');
-    frame.src = 'http://localhost:5090';
+    const loading = document.getElementById('loading');
+
+    frame.addEventListener('load', () => {
+      // Hide loading screen once iframe content loads
+      if (frame.src !== 'about:blank') {
+        loading.style.display = 'none';
+      }
+    });
+
+    frame.src = BACKEND_URL;
+
+    // If the backend is not reachable, retry a few times
+    let retries = 0;
+    frame.addEventListener('error', () => {
+      if (retries < 5) {
+        retries++;
+        setTimeout(() => { frame.src = BACKEND_URL; }, 2000);
+      }
+    });
 
     checkTrial();
   </script>
